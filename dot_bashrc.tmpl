@@ -191,6 +191,8 @@
 # ═══════════ PLATFORM ═══════════
 {{ if eq .chezmoi.os "windows" -}}
 export PATH="$PATH:$(cygpath -u "$USERPROFILE")/.cargo/bin"
+export PATH="$PATH:$(cygpath -u "$USERPROFILE")/scoop/shims"
+
 PS1='\[\e]0;\w\a\]\[\e[32m\]\u@\h \[\e[35m\]$MSYSTEM\[\e[0m\] \[\e[33m\]\w\[\e[0m\]\n\[\e[36m\]❯\[\e[0m\] '
 PROMPT_COMMAND='printf "\033]7;file://%s%s\033\\" "$HOSTNAME" "$(cygpath -m "$PWD")"'
 {{- else -}}
@@ -242,4 +244,4 @@ alias cgt='cargo nextest run'
 alias cgc='cargo check'
 alias cgw='bacon'
 
-export EDITOR=nvim
+for e in nvim vim nano; do command -v $e >/dev/null && export EDITOR=$e && break; done

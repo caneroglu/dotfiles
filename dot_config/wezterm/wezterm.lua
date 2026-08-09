@@ -5,7 +5,7 @@ local config = wezterm.config_builder()
 
 require('modules.theme_picker').apply_to_config(config)
 
--- ═══ SHELL ═══
+-- ═══ SHELL / PLATFORM ═══
 local is_win = wezterm.target_triple:find('windows') ~= nil
 
 if is_win then
@@ -14,26 +14,27 @@ if is_win then
     MSYSTEM = 'UCRT64',
     CHERE_INVOKING = '1',
   }
-  config.win32_system_backdrop = 'Acrylic'
+  config.win32_system_backdrop = 'Acrylic'   -- Win10'daysan sil
+  config.launch_menu = {
+    { label = 'UCRT64',     args = { 'C:/msys64/usr/bin/bash.exe', '-l' } },
+    { label = 'PowerShell', args = { 'pwsh.exe', '-NoLogo' } },
+    { label = 'cmd',        args = { 'cmd.exe' } },
+  }
 else
   config.default_prog = { '/bin/bash', '-l' }
+  config.launch_menu = {
+    { label = 'bash', args = { '/bin/bash', '-l' } },
+  }
 end
 
-
-config.launch_menu = {
-  { label = 'UCRT64',  args = { 'C:/msys64/usr/bin/bash.exe', '-l' } },
-  { label = 'PowerShell', args = { 'pwsh.exe', '-NoLogo' } },
-  { label = 'cmd',     args = { 'cmd.exe' } },
-}
-
-
 -- ═══ GÖRÜNÜM ═══
-config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+config.window_decorations = 'INTEGRATED_BUTTONS|RESIZE'
 config.window_close_confirmation = 'NeverPrompt'
-
-
--- Win11'de acrylic blur. Win10'daysan bu satırı sil, opacity yeter.
 config.window_background_opacity = 0.92
+config.window_padding = { left = 10, right = 10, top = 8, bottom = 4 }
+config.adjust_window_size_when_changing_font_size = false
+config.inactive_pane_hsb = { saturation = 0.85, brightness = 0.65 }
+config.tab_max_width = 32
 
 -- ═══ FONT ═══
 config.font = wezterm.font_with_fallback {
@@ -43,7 +44,6 @@ config.font = wezterm.font_with_fallback {
 }
 config.font_size = 11.0
 config.line_height = 1.1
--- Ligature sevmiyorsan: calt=0, liga=0
 config.harfbuzz_features = { 'calt=1', 'liga=1', 'clig=1', 'ss01=1' }
 
 -- ═══ PERFORMANS ═══
@@ -60,34 +60,6 @@ config.cursor_blink_ease_in = 'Constant'
 config.cursor_blink_ease_out = 'Constant'
 config.audible_bell = 'Disabled'
 
--- Alt+1..9 -> tab
-for i = 1, 9 do
-  table.insert(config.keys, {
-    key = tostring(i), mods = 'ALT', action = act.ActivateTab(i - 1),
-  })
-end
-
--- ═══ MOUSE ═══
-config.mouse_bindings = {
-  -- Ctrl+Click -> link aç
-  { event = { Up = { streak = 1, button = 'Left' } }, mods = 'CTRL',
-    action = act.OpenLinkAtMouseCursor },
-  -- Sag tik -> yapistir
-  { event = { Down = { streak = 1, button = 'Right' } }, mods = 'NONE',
-    action = act.PasteFrom 'Clipboard' },
-}
-
- 
-
--- ═══ MAXIMIZE ON START ═══
-wezterm.on('gui-startup', function(cmd)
-  local _, _, window = mux.spawn_window(cmd or {})
-  window:gui_window():maximize()
-end)
- 
-config.debug_key_events = true
-
-
 -- ═══ KEYBINDS ═══
 config.leader = { key = 'Space', mods = 'CTRL', timeout_milliseconds = 1000 }
 config.keys = {
@@ -97,7 +69,7 @@ config.keys = {
   { key = 'x',  mods = 'LEADER', action = act.CloseCurrentPane { confirm = false } },
   { key = 'z',  mods = 'LEADER', action = act.TogglePaneZoomState },
 
-  -- Pane gezinme (vim style)
+  -- Pane gezinme
   { key = 'h', mods = 'LEADER', action = act.ActivatePaneDirection 'Left' },
   { key = 'j', mods = 'LEADER', action = act.ActivatePaneDirection 'Down' },
   { key = 'k', mods = 'LEADER', action = act.ActivatePaneDirection 'Up' },
@@ -120,12 +92,14 @@ config.keys = {
       end),
   }},
 
-  -- Launcher / workspace
-{ key = 'w', mods = 'LEADER', action = act.ShowLauncherArgs { flags = 'FUZZY|WORKSPACES|LAUNCH_MENU_ITEMS' } },
-  -- Ekran temizle (scrollback dahil)
-  { key = 'k', mods = 'CTRL|SHIFT', action = act.ClearScrollback 'ScrollbackAndViewport' },
+  -- Launcher
+  { key = 'w', mods = 'LEADER', action = act.ShowLauncherArgs { flags = 'FUZZY|WORKSPACES|LAUNCH_MENU_ITEMS' } },
 
-  -- Quick select / copy mode
+  -- Komut paleti
+  { key = 'p', mods = 'CTRL|SHIFT', action = act.ShowLauncherArgs { flags = 'FUZZY|COMMANDS|KEY_ASSIGNMENTS' } },
+
+  -- Temizle / ara
+  { key = 'k',     mods = 'CTRL|SHIFT', action = act.ClearScrollback 'ScrollbackAndViewport' },
   { key = 'Space', mods = 'CTRL|SHIFT', action = act.QuickSelect },
   { key = 'f',     mods = 'CTRL|SHIFT', action = act.Search { CaseInSensitiveString = '' } },
 
@@ -135,9 +109,36 @@ config.keys = {
   { key = '0', mods = 'CTRL', action = act.ResetFontSize },
 }
 
+-- Alt+1..9 -> tab  (config.keys'ten SONRA olmak zorunda)
+for i = 1, 9 do
+  table.insert(config.keys, {
+    key = tostring(i), mods = 'ALT', action = act.ActivateTab(i - 1),
+  })
+end
 
+-- ═══ QUICK SELECT ═══
+config.quick_select_patterns = {
+  '[0-9a-f]{7,40}',
+  '(?:[\\w-]+/)+[\\w.-]+',
+  '\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b',
+  '\\b[\\w.+-]+@[\\w-]+\\.[\\w.]+\\b',
+  '[a-z_]+::[a-zA-Z_:]+',
+}
+
+-- ═══ MOUSE ═══
+config.mouse_bindings = {
+  { event = { Up = { streak = 1, button = 'Left' } }, mods = 'CTRL',
+    action = act.OpenLinkAtMouseCursor },
+  { event = { Down = { streak = 1, button = 'Right' } }, mods = 'NONE',
+    action = act.PasteFrom 'Clipboard' },
+}
+
+-- ═══ MAXIMIZE ON START ═══
+wezterm.on('gui-startup', function(cmd)
+  local _, _, window = mux.spawn_window(cmd or {})
+  window:gui_window():maximize()
+end)
 
 require('modules.status').apply_to_config(config)
-
 
 return config

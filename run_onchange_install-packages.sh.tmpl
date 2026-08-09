@@ -3,9 +3,9 @@ set -e
 
 {{ if eq .chezmoi.os "windows" -}}
 # ── MSYS2 / UCRT64 ──
+pacman -S --needed --noconfirm git || true
 pacman -S --needed --noconfirm \
-  git fzf \
-  mingw-w64-ucrt-x86_64-{zoxide,ripgrep,fd,bat,eza,gitui,git-delta,jq,dust,tldr,ttf-jetbrains-mono-nerd}
+  mingw-w64-ucrt-x86_64-{zoxide,ripgrep,fd,bat,eza,fzf,gitui,jq,dust,tldr} || true
 
 {{ else if eq .chezmoi.os "linux" -}}
 # ── Linux ──
@@ -24,8 +24,7 @@ fi
 
 # ── cross-platform: cargo ──
 if command -v cargo >/dev/null; then
-  for t in eza tealdeer bottom cargo-nextest cargo-edit bacon; do
-    command -v "${t#cargo-}" >/dev/null 2>&1 || cargo install "$t" --locked || true
+  for t in git-delta tealdeer bottom cargo-nextest cargo-edit bacon; do
+    cargo install "$t" --locked 2>/dev/null || true
   done
-  command -v tldr >/dev/null && tldr --update >/dev/null 2>&1 || true
 fi
