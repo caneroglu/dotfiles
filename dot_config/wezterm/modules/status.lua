@@ -26,15 +26,40 @@ local function get_cwd(pane)
   return tostring(cwd):gsub('^file://[^/]*', '')
 end
 
--- ═══ SESSION TIMER ═══
-local function session_elapsed(win_id)
-  local starts = wezterm.GLOBAL.session_starts or {}
-  local key = tostring(win_id)
-  if not starts[key] then
-    starts[key] = os.time()
-    wezterm.GLOBAL.session_starts = starts
+-- ═══ PERSISTENT STATE ═══
+local STATE = (os.getenv('USERPROFILE') or os.getenv('HOME') or '.')
+  :gsub('\\', '/') .. '/.wezterm-focus'
+
+local function load_state()
+  local f = io.open(STATE, 'r')
+  if not f then return { task = '', start = os.time() } end
+  local task = f:read('*l') or ''
+  local start = tonumber(f:read('*l')) or os.time()
+  f:close()
+  return { task = task, start = start }
+end
+
+local function save_state(s)
+  local f = io.open(STATE, 'w')
+  if not f then return end
+  f:write(s.task, '\n', tostring(s.start), '\n')
+  f:close()
+end
+
+-- cache: her saniye disk okumasın
+local function state()
+  local now = os.time()
+  if not wezterm.GLOBAL.st_cache or (wezterm.GLOBAL.st_at or 0) < now - 2 then
+    wezterm.GLOBAL.st_cache = load_state()
+    wezterm.GLOBAL.st_at = now
   end
-  return os.time() - starts[key]
+  return wezterm.GLOBAL.st_cache
+end
+
+local function set_state(s)
+  wezterm.GLOBAL.st_cache = s
+  wezterm.GLOBAL.st_at = os.time()
+  save_state(s)
 end
 
 local function fmt_dur(s)
@@ -74,9 +99,9 @@ wezterm.on('update-status', function(window, pane)
     table.insert(parts, seg(C.alert, '  LEADER  '))
   end
 
-  local focus = (wezterm.GLOBAL.focus_task or {})[tostring(window:window_id())]
-  if focus and focus ~= '' then
-    table.insert(parts, seg(C.focus, '  ◆ ' .. focus .. ' '))
+  local st = state()
+  if st.task ~= '' then
+    table.insert(parts, seg(C.focus, '  ◆ ' .. st.task .. ' '))
   else
     table.insert(parts, seg(C.dim, '  ◇ (hedef yok) '))
   end
@@ -94,10 +119,9 @@ wezterm.on('update-status', function(window, pane)
   end
 
   -- session süresi
-  local el = session_elapsed(window:window_id())
+  local el = os.time() - st.start
   local tcol = el > 10800 and C.alert or (el > 7200 and C.warn or C.dim)
   table.insert(right, seg(tcol, ' ⏱ ' .. fmt_dur(el) .. ' '))
-  table.insert(right, seg(C.dim, '│'))
 
   -- batarya (varsa)
   for _, b in ipairs(wezterm.battery_info()) do
@@ -125,25 +149,22 @@ end)
 -- ═══ KEYBINDS ═══
 function M.keys()
   return {
-    -- LEADER+i -> hedef belirle
+    -- LEADER+i -> hedef belirle (timer da sıfırlanır)
     { key = 'i', mods = 'LEADER', action = wezterm.action.PromptInputLine {
       description = wezterm.format {
         { Foreground = { Color = C.focus } },
         { Text = 'Şu an ne yapıyorsun? (boş = temizle)' },
       },
-      action = wezterm.action_callback(function(win, _, line)
+      action = wezterm.action_callback(function(_, _, line)
         if line == nil then return end
-        local t = wezterm.GLOBAL.focus_task or {}
-        t[tostring(win:window_id())] = line
-        wezterm.GLOBAL.focus_task = t
+        set_state { task = line, start = os.time() }
       end),
     }},
 
-    -- LEADER+I -> session timer sıfırla
-    { key = 'I', mods = 'LEADER', action = wezterm.action_callback(function(win)
-      local s = wezterm.GLOBAL.session_starts or {}
-      s[tostring(win:window_id())] = os.time()
-      wezterm.GLOBAL.session_starts = s
+    -- LEADER+I -> sadece timer sıfırla, hedef kalsın
+    { key = 'I', mods = 'LEADER', action = wezterm.action_callback(function()
+      local s = state()
+      set_state { task = s.task, start = os.time() }
     end)},
   }
 end
