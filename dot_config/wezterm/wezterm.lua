@@ -6,12 +6,19 @@ local config = wezterm.config_builder()
 require('modules.theme_picker').apply_to_config(config)
 
 -- ═══ SHELL ═══
-config.default_prog = { 'C:/msys64/usr/bin/bash.exe', '-l' }
-config.set_environment_variables = {
-  MSYSTEM = 'UCRT64',
-  CHERE_INVOKING = '1',
-  MSYS = 'winsymlinks:nativestrict',
-}
+local is_win = wezterm.target_triple:find('windows') ~= nil
+
+if is_win then
+  config.default_prog = { 'C:/msys64/usr/bin/bash.exe', '-l' }
+  config.set_environment_variables = {
+    MSYSTEM = 'UCRT64',
+    CHERE_INVOKING = '1',
+  }
+  config.win32_system_backdrop = 'Acrylic'
+else
+  config.default_prog = { '/bin/bash', '-l' }
+end
+
 
 config.launch_menu = {
   { label = 'UCRT64',  args = { 'C:/msys64/usr/bin/bash.exe', '-l' } },

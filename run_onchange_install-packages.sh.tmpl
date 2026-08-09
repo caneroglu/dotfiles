@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+{{ if eq .chezmoi.os "windows" -}}
+# ── MSYS2 / UCRT64 ──
+pacman -S --needed --noconfirm \
+  git fzf \
+  mingw-w64-ucrt-x86_64-{zoxide,ripgrep,fd,bat,eza,gitui,git-delta,jq,dust,tldr,ttf-jetbrains-mono-nerd}
+
+{{ else if eq .chezmoi.os "linux" -}}
+# ── Linux ──
+if command -v pacman >/dev/null; then
+  sudo pacman -S --needed --noconfirm \
+    git zoxide ripgrep fd bat eza fzf gitui git-delta jq dust tealdeer wezterm
+elif command -v apt >/dev/null; then
+  sudo apt update
+  sudo apt install -y git zoxide ripgrep fd-find bat fzf jq
+  # ubuntu/debian: bat->batcat, fd->fdfind
+  mkdir -p ~/.local/bin
+  ln -sf "$(command -v batcat)" ~/.local/bin/bat 2>/dev/null || true
+  ln -sf "$(command -v fdfind)" ~/.local/bin/fd 2>/dev/null || true
+fi
+{{- end }}
+
+# ── cross-platform: cargo ──
+if command -v cargo >/dev/null; then
+  for t in eza tealdeer bottom cargo-nextest cargo-edit bacon; do
+    command -v "${t#cargo-}" >/dev/null 2>&1 || cargo install "$t" --locked || true
+  done
+  command -v tldr >/dev/null && tldr --update >/dev/null 2>&1 || true
+fi

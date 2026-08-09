@@ -1,0 +1,4 @@
+{{ if eq .chezmoi.os "windows" -}}
+[interpreters.sh]
+    command = "C:/msys64/usr/bin/bash.exe"
+{{- end }}
