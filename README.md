@@ -1,44 +1,29 @@
 # dotfiles
 
-## Windows
 
-### 0. Paketler — **PowerShell'de, MSYS2 bash'te değil**
+### 1. PowerShell — çekirdek dörtlü
 
 ```powershell
-winget install MSYS2.MSYS2 twpayne.chezmoi wez.wezterm Git.Git
+winget install Git.Git GitHub.cli MSYS2.MSYS2 twpayne.chezmoi
 ```
 
-> `winget` MSYS2 bash'ten çalışmaz. `%LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe`
-> gerçek binary değil, App Execution Alias — sıfır byte'lık reparse point.
-> PATH'e eklesen bile MSYS2 exec katmanı çalıştıramaz.
-> Mecbur kalırsan bash'ten:
-> ```bash
-> winget() { MSYS2_ARG_CONV_EXCL='*' cmd.exe /c winget "$@"; }
-> ```
-> (`MSYS2_ARG_CONV_EXCL` şart, yoksa MSYS `/c`'yi `C:/` diye path'e çevirir.)
+Bu dört paket bootstrap için yeterli. Gerisi adım 5'te repodan gelecek.
 
-MSYS2 ilk açılışta:
-```bash
-pacman -Syu    # kendini güncelleyip terminali kapatır
-pacman -Syu    # tekrar aç, bir daha çalıştır
+### 2. PowerShell — GitHub auth
+
+```powershell
+gh auth login
 ```
 
-### 1. Home'u hizala
+### 3. MSYS2 UCRT64 — home'u hizala
 
-UCRT64 shell'de:
 ```bash
+pacman -Syu          # kendini güncelleyip terminali kapatır
+pacman -Syu          # tekrar aç, bir daha
 echo "db_home: windows" >> /etc/nsswitch.conf
 ```
-Terminali kapat aç, **doğrula**:
-```bash
-echo $HOME     # /c/Users/<kullanıcı> dönmeli
-```
 
-chezmoi native Windows binary'si — cygwin/msys build'i yok. Home'u
-`USERPROFILE`'dan okur. MSYS2 bash'in varsayılanı ise `/home/<kullanıcı>`.
-Hizalamazsan dotfile'ların yarısı bir eve, yarısı öbürüne düşer.
-
-### 2. chezmoi'yi PATH'e al — kalıcı olarak
+### 4. PATH
 
 ```bash
 echo 'export PATH="$PATH:/c/Users/$USERNAME/AppData/Local/Microsoft/WinGet/Links"' >> ~/.bashrc
@@ -46,16 +31,50 @@ source ~/.bashrc
 chezmoi --version
 ```
 
-`export`'u tek satır çalıştırmak yetmez, oturumla birlikte uçar.
-(`WinGet/Links` winget'in kendisi değil, winget'in kurduğu şeylerin klasörü.)
-
-### 3. init
+### 5. Tek komut
 
 ```bash
-chezmoi init --apply caneroglu
+chezmoi init --apply --ssh caneroglu
 ```
 
-Repo private ise git credential'ı **önceden** hazırla
+Configler iner, `run_once_` script'i kalan paketleri kurar 
+
+### 6. Rust
+
+https://rustup.rs
+
+---
+
+## Paketler
+
+Mevcut makinede paket listesini çıkar — **bunu makine ayaktayken yap**, sıfırlandıktan
+sonra çıkaracak liste kalmaz:
+
+```powershell
+winget export -o packages.json --accept-source-agreements
+```
+
+`packages.json`'ı repoya at. Sonra `.chezmoiscripts/run_once_install-packages.ps1.tmpl`:
+
+```
+{{ if eq .chezmoi.os "windows" -}}
+winget import -i "{{ .chezmoi.sourceDir }}/packages.json" --accept-package-agreements --accept-source-agreements --ignore-unavailable
+{{ end -}}
+```
+
+Windows dışında dosya boş render olur, chezmoi boş script'i atlar.
+
+`.chezmoi.toml.tmpl`'e interpreter tanımı şart — yoksa chezmoi `.ps1`'i çalıştıramaz:
+
+```toml
+[interpreters.ps1]
+command = "powershell"
+args = ["-NoLogo", "-NoProfile", "-NonInteractive"]
+```
+
+`run_once_` = script'in hash'i değişmedikçe bir daha çalışmaz. Paket listesini
+güncelleyince hash değişir, tekrar çalışır. 
+
 
 ---
 
@@ -69,8 +88,6 @@ source ~/.bashrc
 ```
 
 `unzip` olmadan script `unzip: command not found` deyip hiçbir şey kurmadan çıkar.
-İnen binary yine `windows/amd64` — adım 1'deki home hizalaması yine şart.
-
 
 ### Doğrulama
 
@@ -82,25 +99,32 @@ chezmoi source-path
 Boş `chezmoi status` iki anlama gelir: her şey uygulandı **ya da** kaynak dizin boş.
 Ayırt eden `managed` — boş dönüyorsa init repoyu çekmemiş.
 
-### WezTerm config nerede aranıyor
 
-Sırayla: `$XDG_CONFIG_HOME/wezterm/wezterm.lua` → `$HOME/.config/wezterm/wezterm.lua`
-→ `$HOME/.wezterm.lua`. Windows'ta `$HOME` = `USERPROFILE`, yani adım 1 yapıldıysa
-MSYS2 ile aynı yeri gösterir. Hangi dosyanın yüklendiğini görmek için WezTerm'de
-debug overlay: `Ctrl+Shift+L`.
+### Pacman Paketler
 
-### Rust
-
-https://rustup.rs
-
----
-
-## Linux
+Mevcut listeyi çıkarmak için başlangıç noktası:
 
 ```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply caneroglu
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+pacman -Qqe              # Arch — explicit kurulanlar
+apt-mark showmanual      # Debian/Ubuntu
 ```
+
+Çıktıyı **buda**, repoya `packages.txt` olarak elle bakımlı halde koy.
+
+`.chezmoiscripts/run_once_install-packages.sh.tmpl`:
+
+```
+#!/bin/sh
+{{ if eq .chezmoi.os "linux" -}}
+{{   if eq .chezmoi.osRelease.id "arch" -}}
+sudo pacman -S --needed --noconfirm - < "{{ .chezmoi.sourceDir }}/packages.txt"
+{{   else if eq .chezmoi.osRelease.id "debian" "ubuntu" -}}
+xargs -a "{{ .chezmoi.sourceDir }}/packages.txt" sudo apt-get install -y
+{{   end -}}
+{{ end -}}
+```
+
+Shebang yeterli, Windows'taki gibi `[interpreters]` tanımı gerekmez.
 
 ---
 
