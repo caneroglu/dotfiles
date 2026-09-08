@@ -142,3 +142,18 @@ OS'a göre ayrım — `.tmpl` uzantılı dosyalarda:
 ```
 {{ if eq .chezmoi.os "windows" }}...{{ else }}...{{ end }}
 ```
+
+
+## Agent Skills
+
+
+```bash
+
+npx -y skills@latest add multica-ai/andrej-karpathy-skills --skill '*' -a opencode -y -g
+npx -y skills@latest add hardikpandya/stop-slop --skill '*' -a opencode -y -g -a opencode
+npx -y skills@latest add anthropics/skills --skill frontend-design --skill skill-creator -a opencode -y -g -a opencode
+npx -y skills@latest add leynos/rust-skill -y -g -a opencode
+npx -y skills@latest add mattpocock/skills --skill grill-me --skill handoff -a opencode -y
+npx -y firecrawl-cli@latest init --all
+```
+
