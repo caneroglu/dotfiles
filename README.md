@@ -155,5 +155,18 @@ npx -y skills@latest add anthropics/skills --skill frontend-design --skill skill
 npx -y skills@latest add leynos/rust-skill -y -g -a opencode
 npx -y skills@latest add mattpocock/skills --skill grill-me --skill handoff -a opencode -y
 npx -y firecrawl-cli@latest init --all
+npx skills add https://github.com/mattpocock/skills --skill grill-with-docs -y -g -a opencode
+
+npx skills add https://github.com/mattpocock/skills --skill tdd -y -g -a opencode
+
+npx skills add https://github.com/mattpocock/skills --skill teach -y -g -a opencode
+
+npx skills add https://github.com/mattpocock/skills --skill codebase-design -y -g -a opencode
+
+curl -fsSL https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/main/install.sh | bash
+
+npx skills add K-Dense-AI/scientific-agent-skills ## ! Ağır
+
+Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
 ```
 
