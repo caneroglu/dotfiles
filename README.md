@@ -168,5 +168,10 @@ curl -fsSL https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/main/
 npx skills add K-Dense-AI/scientific-agent-skills ## ! Ağır
 
 Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
+
+npm install -g @fission-ai/openspec@latest
+
+curl -fsSL https://raw.githubusercontent.com/darrenhinde/OpenAgentsControl/main/install.sh -o install.sh
+bash install.sh
 ```
 
