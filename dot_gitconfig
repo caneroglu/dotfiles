@@ -7,4 +7,4 @@
 	name = Can Eroğlu
 	email = can.eroglu@outlook.com
 [credential]
-	helper = !\"/c/Program Files/GitHub CLI/gh.exe\" auth git-credential
+	helper = !gh auth git-credential
