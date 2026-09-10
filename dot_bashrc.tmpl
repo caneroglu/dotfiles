@@ -201,6 +201,15 @@ PS1='\[\e]0;\w\a\]\[\e[32m\]\u@\h\[\e[0m\] \[\e[33m\]\w\[\e[0m\]\n\[\e[36m\]❯\
 PROMPT_COMMAND='printf "\033]7;file://%s%s\033\\" "$HOSTNAME" "$PWD"'
 {{- end }}
 
+case "$(uname -s)" in
+  MINGW*|MSYS*)
+    export PATH="$PATH:/c/Program Files/nodejs:$APPDATA/npm:/c/Windows/System32:/c/Windows"
+    ;;
+esac
+export PATH="$PATH:$HOME/.local/bin"
+
+
+
 # ═══════════ HISTORY ═══════════
 shopt -s histappend cdspell checkwinsize
 HISTSIZE=50000
